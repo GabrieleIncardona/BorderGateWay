@@ -27,7 +27,6 @@ class TeleportParams:
 
 
 class Router(Program):
-    insieme = ""
     msg = ""
     disponibilita = 1
     collegamento = None
@@ -48,13 +47,13 @@ class Router(Program):
     def meta(self) -> ProgramMeta:
         return ProgramMeta(
             name="controller_program",
-            csockets=[self.link],
-            epr_sockets=[self.link],
+            csockets=self.link,
+            epr_sockets=self.link,
             max_qubits=2,
         )
 
-    async def run(self, context: ProgramContext):
-        async def send_message(msg):
+    def run(self, context: ProgramContext):
+        def send_message(msg):
             csocket1 = context.csockets[self.link[0]]
             csocket2 = context.csockets[self.link[1]]
             self.iniziatore = 1
@@ -63,7 +62,7 @@ class Router(Program):
             csocket1.send(self.msg)
             csocket2.send(self.msg)
 
-        async def receive_message():
+        def receive_message():
             csocket1 = context.csockets[self.link[0]]
             csocket2 = context.csockets[self.link[1]]
 
@@ -90,48 +89,48 @@ class Router(Program):
                     if self.disponibilita == 1:
                         self.disponibilita = 0
                         self.ultimo = 1
-                        await send_risposta()
+                        send_risposta()
                     else:
-                        await chiedi_disponibilita()
+                        chiedi_disponibilita()
                 else:
                     if self.disponibilita == 1:
-                        await send_message(self.msg)
+                        send_message(self.msg)
                     else:
-                        await Notsend_risposta()
+                        Notsend_risposta()
             elif self.msg == "Disponibile":
                 if self.collegamento_gia_creato == 0:
                     self.collegamento_gia_creato = 1
                     self.mittente2 = self.mittente
                     if self.iniziatore == 0:
-                        await send_risposta()
+                        send_risposta()
                     else:
-                        await create_quantum_link()
+                        create_quantum_link()
                 else:
-                    await ripristina_disponibilita()
+                    ripristina_disponibilita()
             elif self.msg.startswith("Performed teleportation protocol with measured corrections:"):
                 if self.ultimo == 0:
-                    await create_quantum_link()
+                    create_quantum_link()
 
             elif self.msg == "Ripristina disponibilita":
-                await ripristina_disponibilita()
+                ripristina_disponibilita()
 
-        async def chiedi_disponibilita():
+        def chiedi_disponibilita():
             csocket = context.csockets[self.collegamento]
             csocket.send(self.msg)
 
-        async def send_risposta():
+        def send_risposta():
             csocket = context.csockets[self.mittente]
             csocket.send("Disponibile")
 
-        async def Notsend_risposta():
+        def Notsend_risposta():
             csocket = context.csockets[self.mittente]
             csocket.send("No disponibile")
 
-        async def ripristina_disponibilita():
+        def ripristina_disponibilita():
             csocket = context.csockets[self.mittente]
             csocket.send("Ripristina disponibilita")
 
-        async def create_quantum_link():
+        def create_quantum_link():
             csocket = context.csockets[self.mittente2]
             epr_socket = context.epr_sockets[self.mittente2]
             connection = context.connection
@@ -162,7 +161,7 @@ class Router(Program):
             return {"m1": m1, "m2": m2, "original_dm": original_dm}
 
         if self.insieme == "A1":
-            await send_message("Voglio comunicare con D1")
+            send_message("Voglio comunicare con D1")
 
         while 1:
-            await receive_message()  # Attendere la ricezione del messaggio
+            receive_message()  # Attendere la ricezione del messaggio

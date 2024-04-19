@@ -1,3 +1,7 @@
+from netsquid_magic.models.perfect import PerfectLinkConfig
+from netsquid_netbuilder.modules.clinks.default import DefaultCLinkConfig
+from netsquid_netbuilder.util.network_generation import create_complete_graph_network
+
 from struttura import create_network
 import traceback
 from router import *
@@ -18,16 +22,29 @@ def main():
         ("D1", "D2")
     ]
 
-    # Creare la configurazione della rete
-    network_config = create_network(node_names, links)
+    # import network configuration from file
+    cfg = create_complete_graph_network(
+        node_names,
+        "perfect",
+        PerfectLinkConfig(state_delay=100),
+        clink_typ="default",
+        clink_cfg=DefaultCLinkConfig(delay=100),
+    )
 
     # Creare un dizionario di programmi per ciascun nodo
     programs = {}
     for node_name in node_names:
-        router = Router(node_name, links, TeleportParams.generate_random_params())
+        link = []
+        for link_name in links:
+            if node_name in link_name:
+                for num in link_name:
+                    if num != node_name:
+                        link.append(num)
+
+        router = Router(node_name, link, TeleportParams.generate_random_params())
         programs[node_name] = router
 
-    run(config=network_config, programs=programs, num_times=1)
+    run(config=cfg, programs=programs, num_times=1)
 
 
 if __name__ == "__main__":
