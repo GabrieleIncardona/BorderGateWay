@@ -1,5 +1,6 @@
 import logging
 import select
+import time
 import asyncio  # Aggiunto asyncio per gestire il timeout
 
 import numpy
@@ -35,6 +36,7 @@ class Router(Program):
     iniziatore = 0
     ultimo = 0
     collegamento_gia_creato = 0
+    ciclo = True
 
     def __init__(self, insieme, link, params: TeleportParams):
         self.logger = LogManager.get_stack_logger(self.__class__.__name__)
@@ -66,12 +68,15 @@ class Router(Program):
             csocket1 = context.csockets[self.link[0]]
             csocket2 = context.csockets[self.link[1]]
 
+            # Verifica il tipo degli oggetti
+            print(type(csocket1), type(csocket2))
+
             socket_list = [csocket1, csocket2]
 
             lettura, _, _ = select.select(socket_list, [], [], 100)  # Timeout di 100 secondi
 
             if not lettura:  # Se il timeout è scaduto
-                return
+                exit()
 
             for sock in lettura:
                 if sock == csocket1:
@@ -109,6 +114,8 @@ class Router(Program):
                     ripristina_disponibilita()
             elif self.msg.startswith("Performed teleportation protocol with measured corrections:"):
                 if self.ultimo == 0:
+                    print("Sto eseguendo il collegamento entenglement\n")
+                    self.ciclo = False
                     create_quantum_link()
 
             elif self.msg == "Ripristina disponibilita":
@@ -163,5 +170,5 @@ class Router(Program):
         if self.insieme == "A1":
             send_message("Voglio comunicare con D1")
 
-        while 1:
+        while self.ciclo:
             receive_message()  # Attendere la ricezione del messaggio
