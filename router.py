@@ -1,8 +1,9 @@
 import numpy
-from netsquid_protocols import QueueProtocol, CSocketListener
+from netsquid_protocols import CSocketListener, QueueProtocol, SleepingProtocol
 from netqasm.sdk import Qubit
 from netqasm.sdk.classical_communication.message import StructuredMessage
 from netqasm.sdk.toolbox.state_prep import set_qubit_state
+
 
 from squidasm.sim.stack.common import LogManager
 from squidasm.sim.stack.program import Program, ProgramContext, ProgramMeta
@@ -53,15 +54,19 @@ class Router(Program):
         def send_message(msg):
             csocket1 = context.csockets[self.link[0]]
             csocket2 = context.csockets[self.link[1]]
+            connection = context.connection
             self.iniziatore = 1
             self.msg = msg
+            yield from connection.flush()
 
-            csocket1.send(msg)
-            csocket2.send(msg)
+            yield from csocket1.send(msg)
+            yield from csocket2.send(msg)
+            print("Hello")
 
         def receive_message():
             queue_protocol = QueueProtocol()
             queue_protocol.start()
+            connection = context.connection
 
             listener = CSocketListener(context, self.link[0], queue_protocol, self.logger)
             listener.start()
@@ -71,6 +76,7 @@ class Router(Program):
 
             client_name, msg = yield from queue_protocol.pop()
             self.mittente = client_name
+            print(client_name)
             if client_name == self.link[0]:
                 self.collegamento = self.link[1]
             else:
