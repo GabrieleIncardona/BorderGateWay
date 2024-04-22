@@ -1,6 +1,5 @@
-import select
-
 import numpy
+from netsquid_protocols import QueueProtocol, CSocketListener
 from netqasm.sdk import Qubit
 from netqasm.sdk.classical_communication.message import StructuredMessage
 from netqasm.sdk.toolbox.state_prep import set_qubit_state
@@ -57,31 +56,26 @@ class Router(Program):
             self.iniziatore = 1
             self.msg = msg
 
-            csocket1.send_structured(msg)
-            csocket2.send_structured(msg)
+            csocket1.send(msg)
+            csocket2.send(msg)
 
         def receive_message():
-            csocket1 = context.csockets[self.link[0]]
-            csocket2 = context.csockets[self.link[1]]
-            print(type(csocket1), type(csocket2))
-            socket_list = [csocket1, csocket2]
+            queue_protocol = QueueProtocol()
+            queue_protocol.start()
 
-            lettura, _, _ = select.select(socket_list, [], [], 100)  # Timeout di 100 secondi
+            listener = CSocketListener(context, self.link[0], queue_protocol, self.logger)
+            listener.start()
 
-            if not lettura:  # Se il timeout è scaduto
-                exit()
+            listener = CSocketListener(context, self.link[1], queue_protocol, self.logger)
+            listener.start()
 
-            for sock in lettura:
-                if sock == csocket1:
-                    self.collegamento = self.link[0]
-                    self.mittente = self.link[1]  # Memorizza il mittente
-                elif sock == csocket2:
-                    self.collegamento = self.link[1]
-                    self.mittente = self.link[0]  # Memorizza il mittente
-
-                msg = sock.recv_structured()
-                assert isinstance(msg, StructuredMessage)
-                self.msg = msg.payload
+            client_name, msg = yield from queue_protocol.pop()
+            self.mittente = client_name
+            if client_name == self.link[0]:
+                self.collegamento = self.link[1]
+            else:
+                self.collegamento = self.link[0]
+            self.msg = msg
             if self.msg.startswith("Voglio collegarmi con "):
                 sottomessaggio = self.msg.split("Voglio collegarmi con ")
                 if self.insieme == sottomessaggio[1]:
