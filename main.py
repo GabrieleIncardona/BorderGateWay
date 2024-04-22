@@ -1,10 +1,13 @@
+import traceback
+
 from netsquid_magic.models.perfect import PerfectLinkConfig
 from netsquid_netbuilder.modules.clinks.default import DefaultCLinkConfig
 from netsquid_netbuilder.util.network_generation import create_complete_graph_network
 
-from struttura import create_network
-import traceback
+from squidasm.run.stack.run import run
+
 from router import *
+from squidasm.run.stack.run import run
 
 
 def main():

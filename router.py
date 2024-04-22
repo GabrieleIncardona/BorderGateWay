@@ -1,14 +1,10 @@
-import logging
 import select
-import time
-import asyncio  # Aggiunto asyncio per gestire il timeout
 
 import numpy
 from netqasm.sdk import Qubit
 from netqasm.sdk.classical_communication.message import StructuredMessage
 from netqasm.sdk.toolbox.state_prep import set_qubit_state
 
-from squidasm.run.stack.run import run
 from squidasm.sim.stack.common import LogManager
 from squidasm.sim.stack.program import Program, ProgramContext, ProgramMeta
 from squidasm.util import get_qubit_state, get_reference_state
@@ -61,16 +57,13 @@ class Router(Program):
             self.iniziatore = 1
             self.msg = msg
 
-            csocket1.send(self.msg)
-            csocket2.send(self.msg)
+            csocket1.send_structured(msg)
+            csocket2.send_structured(msg)
 
         def receive_message():
             csocket1 = context.csockets[self.link[0]]
             csocket2 = context.csockets[self.link[1]]
-
-            # Verifica il tipo degli oggetti
             print(type(csocket1), type(csocket2))
-
             socket_list = [csocket1, csocket2]
 
             lettura, _, _ = select.select(socket_list, [], [], 100)  # Timeout di 100 secondi
@@ -86,8 +79,9 @@ class Router(Program):
                     self.collegamento = self.link[1]
                     self.mittente = self.link[0]  # Memorizza il mittente
 
-                self.msg = sock.recv(1024).decode()
-
+                msg = sock.recv_structured()
+                assert isinstance(msg, StructuredMessage)
+                self.msg = msg.payload
             if self.msg.startswith("Voglio collegarmi con "):
                 sottomessaggio = self.msg.split("Voglio collegarmi con ")
                 if self.insieme == sottomessaggio[1]:
@@ -169,6 +163,4 @@ class Router(Program):
 
         if self.insieme == "A1":
             send_message("Voglio comunicare con D1")
-
-        while self.ciclo:
-            receive_message()  # Attendere la ricezione del messaggio
+        receive_message()  # Attendere la ricezione del messaggio
