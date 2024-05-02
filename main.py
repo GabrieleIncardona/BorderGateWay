@@ -15,14 +15,14 @@ def main():
     # Definire i nodi e i collegamenti della rete
     node_names = ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]
     links = [
-        ("A1", "A2"),
-        ("A1", "B1"),
-        ("A2", "C1"),
-        ("B1", "B2"),
-        ("B2", "D1"),
-        ("C1", "C2"),
-        ("C2", "D2"),
-        ("D1", "D2")
+        ["A1", "A2"],
+        ["A1", "B1"],
+        ["A2", "C1"],
+        ["B1", "B2"],
+        ["B2", "D1"],
+        ["C1", "C2"],
+        ["C2", "D2"],
+        ["D1", "D2"]
     ]
 
     # import network configuration from file
@@ -46,7 +46,7 @@ def main():
 
         router = Router(node_name, link, TeleportParams.generate_random_params())
         programs[node_name] = router
-
+    #print(programs)
     run(config=cfg, programs=programs, num_times=1)
 
 
