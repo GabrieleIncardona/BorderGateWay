@@ -116,11 +116,10 @@ class Router(Program):
                     else:
                         ripristina_disponibilita()
                 elif self.msg.startswith("Invio epr"):
-                    if self.ultimo == 0:
-                        self.mittente = client_name
-                        print("Sto eseguendo il collegamento entenglement")
-                        self.ciclo = False
-                        yield from rcv_quantum_link()
+                    self.mittente = client_name
+                    print("Sto eseguendo il collegamento entenglement")
+                    self.ciclo = False
+                    yield from rcv_quantum_link()
 
                 elif self.msg == "Ripristina disponibilita":
                     ripristina_disponibilita()
@@ -173,6 +172,7 @@ class Router(Program):
             #    f"Performed teleportation protocol with measured corrections: m1 = {m1}, m2 = {m2}"
             # )
             csocket.send_structured(StructuredMessage("Corrections", f"{m1},{m2}"))
+            print("m1: " + m1.__str__() + " m2: " + m2.__str__())
             original_dm = get_reference_state(self.phi, self.theta)
 
             return {"m1": m1, "m2": m2, "original_dm": original_dm}
@@ -200,9 +200,10 @@ class Router(Program):
             yield from connection.flush()
 
             final_dm = get_qubit_state(epr, self.insieme)
-            yield from create_quantum_link()
+            if self.ultimo == 0:
+                yield from create_quantum_link()
             return {"final_dm": final_dm}
 
         if self.insieme == "A1":
             send_message("Voglio comunicare con D1")
-        yield from receive_message()  # Attendere la ricezione del messaggio
+        yield from receive_message()
