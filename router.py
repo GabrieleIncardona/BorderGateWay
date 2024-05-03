@@ -115,16 +115,18 @@ class Router(Program):
                             yield from create_quantum_link()
                     else:
                         ripristina_disponibilita()
-                elif self.msg.startswith("Corrections"):
+                elif self.msg.startswith("Invio epr"):
                     if self.ultimo == 0:
                         self.mittente = client_name
-                        print("Sto eseguendo il collegamento entenglement\n")
+                        print("Sto eseguendo il collegamento entenglement")
                         self.ciclo = False
-                        yield from create_quantum_link()
+                        yield from rcv_quantum_link()
 
                 elif self.msg == "Ripristina disponibilita":
                     ripristina_disponibilita()
 
+                else:
+                    return
                 self.msg = " "
 
         def chiedi_disponibilita():
@@ -151,28 +153,55 @@ class Router(Program):
 
             q = Qubit(connection)
             set_qubit_state(q, self.phi, self.theta)
+            yield from connection.flush()
+            print("QUBIT STATE")
             # Create EPR pairs
+            csocket.send("Invio epr")
             epr = epr_socket.create_keep()[0]
+            yield from connection.flush()
+            print("EPR CREATE")
             # Teleport
             q.cnot(epr)
             q.H()
 
             m1 = q.measure()
             m2 = epr.measure()
-
             yield from connection.flush()
 
             m1, m2 = int(m1), int(m2)
-            print("Hello")
-            self.logger.info(
-                f"Performed teleportation protocol with measured corrections: m1 = {m1}, m2 = {m2}"
-            )
-            print("Hello")
-            csocket.send("Corrections" + f"{m1},{m2}")
-
+            # self.logger.info(
+            #    f"Performed teleportation protocol with measured corrections: m1 = {m1}, m2 = {m2}"
+            # )
+            csocket.send_structured(StructuredMessage("Corrections", f"{m1},{m2}"))
             original_dm = get_reference_state(self.phi, self.theta)
 
-            # return {"m1": m1, "m2": m2, "original_dm": original_dm}
+            return {"m1": m1, "m2": m2, "original_dm": original_dm}
+
+        def rcv_quantum_link():
+            csocket = context.csockets[self.mittente]
+            epr_socket = context.epr_sockets[self.mittente]
+            connection = context.connection
+            print("WAIT EPR")
+            epr = epr_socket.recv_keep()[0]
+            yield from connection.flush()
+            print("EPR RECEIVED")
+
+            msg = yield from csocket.recv_structured()
+            assert isinstance(msg, StructuredMessage)
+            self.msg = msg.payload
+            print(self.msg)
+            m1, m2 = self.msg.split(",")
+            print("HELLO")
+            if int(m2) == 1:
+                epr.X()
+            if int(m1) == 1:
+                epr.Z()
+
+            yield from connection.flush()
+
+            final_dm = get_qubit_state(epr, self.insieme)
+            yield from create_quantum_link()
+            return {"final_dm": final_dm}
 
         if self.insieme == "A1":
             send_message("Voglio comunicare con D1")
