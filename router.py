@@ -104,7 +104,8 @@ class Router(Program):
                 elif self.msg == "Disponibile":
                     if self.collegamento_gia_creato == 0:
                         self.collegamento_gia_creato = 1
-                        self.mittente2 = self.mittente
+                        self.mittente2 = client_name
+                        print(self.mittente2)
 
                         if self.iniziatore == 0:
                             send_risposta()
@@ -112,14 +113,15 @@ class Router(Program):
                             print("io insieme:" + self.insieme + " sto creando entanglement ")
                             self.mittente = client_name
                             self.mittente2 = client_name
-                            yield from create_quantum_link()
+                            self.ciclo = False
+                            result = yield from create_quantum_link()
                     else:
                         ripristina_disponibilita()
                 elif self.msg.startswith("Invio epr"):
                     self.mittente = client_name
                     print("Sto eseguendo il collegamento entenglement")
                     self.ciclo = False
-                    yield from rcv_quantum_link()
+                    yield from rcv_quantum_link(queue_protocol)
 
                 elif self.msg == "Ripristina disponibilita":
                     ripristina_disponibilita()
@@ -143,22 +145,25 @@ class Router(Program):
 
         def ripristina_disponibilita():
             csocket = context.csockets[self.mittente]
+            self.disponibilita = 1
             csocket.send("Ripristina disponibilita")
 
         def create_quantum_link():
             csocket = context.csockets[self.mittente2]
             epr_socket = context.epr_sockets[self.mittente2]
+            # print(self.mittente2)
             connection = context.connection
 
             q = Qubit(connection)
             set_qubit_state(q, self.phi, self.theta)
             yield from connection.flush()
-            print("QUBIT STATE")
+            # print("QUBIT STATE")
             # Create EPR pairs
             csocket.send("Invio epr")
+            print("Invio avvernuto")
             epr = epr_socket.create_keep()[0]
             yield from connection.flush()
-            print("EPR CREATE")
+            # print("EPR CREATE")
             # Teleport
             q.cnot(epr)
             q.H()
@@ -171,27 +176,27 @@ class Router(Program):
             # self.logger.info(
             #    f"Performed teleportation protocol with measured corrections: m1 = {m1}, m2 = {m2}"
             # )
-            csocket.send_structured(StructuredMessage("Corrections", f"{m1},{m2}"))
+            csocket.send(f"{m1},{m2}")
             print("m1: " + m1.__str__() + " m2: " + m2.__str__())
             original_dm = get_reference_state(self.phi, self.theta)
 
             return {"m1": m1, "m2": m2, "original_dm": original_dm}
 
-        def rcv_quantum_link():
+        def rcv_quantum_link(queue_protocol):
             csocket = context.csockets[self.mittente]
             epr_socket = context.epr_sockets[self.mittente]
             connection = context.connection
-            print("WAIT EPR")
+            # print("WAIT EPR")
             epr = epr_socket.recv_keep()[0]
             yield from connection.flush()
-            print("EPR RECEIVED")
+            # print("EPR RECEIVED")
 
-            msg = yield from csocket.recv_structured()
-            assert isinstance(msg, StructuredMessage)
-            self.msg = msg.payload
+            client_name, msg = yield from queue_protocol.pop()
+
+            self.msg = msg
             print(self.msg)
             m1, m2 = self.msg.split(",")
-            print("HELLO")
+            print("m1: " + m1.__str__() + " m2: " + m2.__str__())
             if int(m2) == 1:
                 epr.X()
             if int(m1) == 1:
@@ -201,6 +206,7 @@ class Router(Program):
 
             final_dm = get_qubit_state(epr, self.insieme)
             if self.ultimo == 0:
+                print()
                 yield from create_quantum_link()
             return {"final_dm": final_dm}
 
