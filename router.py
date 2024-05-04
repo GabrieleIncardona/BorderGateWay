@@ -105,7 +105,6 @@ class Router(Program):
                     if self.collegamento_gia_creato == 0:
                         self.collegamento_gia_creato = 1
                         self.mittente2 = client_name
-                        print(self.mittente2)
 
                         if self.iniziatore == 0:
                             send_risposta()
@@ -114,15 +113,18 @@ class Router(Program):
                             self.mittente = client_name
                             self.mittente2 = client_name
                             self.ciclo = False
-                            result = yield from create_quantum_link()
+                            yield from create_quantum_link_iniziale(queue_protocol)
                     else:
                         ripristina_disponibilita()
+
                 elif self.msg.startswith("Invio epr"):
                     self.mittente = client_name
-                    print("Sto eseguendo il collegamento entenglement")
+                    print("io insieme:" + self.insieme + " sto creando entanglement ")
                     self.ciclo = False
-                    yield from rcv_quantum_link(queue_protocol)
-
+                    if self.ultimo == 0:
+                        yield from create_quantum_link_intermedio(queue_protocol)
+                    else:
+                        yield from create_quantum_link_ultimo(queue_protocol)
                 elif self.msg == "Ripristina disponibilita":
                     ripristina_disponibilita()
 
@@ -148,67 +150,176 @@ class Router(Program):
             self.disponibilita = 1
             csocket.send("Ripristina disponibilita")
 
-        def create_quantum_link():
+        # def create_quantum_link():
+        #     csocket = context.csockets[self.mittente2]
+        #     epr_socket = context.epr_sockets[self.mittente2]
+        #     connection = context.connection
+        #
+        #     q = Qubit(connection)
+        #     set_qubit_state(q, self.phi, self.theta)
+        #     yield from connection.flush()
+        #     # print("QUBIT STATE")
+        #     # Create EPR pairs
+        #     csocket.send("Invio epr")
+        #     print("Invio avvernuto")
+        #     epr = epr_socket.create_keep()[0]
+        #     yield from connection.flush()
+        #     # print("EPR CREATE")
+        #     # Teleport
+        #     q.cnot(epr)
+        #     q.H()
+        #
+        #     m1 = q.measure()
+        #     m2 = epr.measure()
+        #     yield from connection.flush()
+        #
+        #     m1, m2 = int(m1), int(m2)
+        #     # self.logger.info(
+        #     #    f"Performed teleportation protocol with measured corrections: m1 = {m1}, m2 = {m2}"
+        #     # )
+        #     csocket.send(f"{m1},{m2}")
+        #     print("m1: " + m1.__str__() + " m2: " + m2.__str__())
+        #     original_dm = get_reference_state(self.phi, self.theta)
+        #
+        #     return {"m1": m1, "m2": m2, "original_dm": original_dm}
+
+        # def rcv_quantum_link(queue_protocol):
+        #     csocket = context.csockets[self.mittente]
+        #     epr_socket = context.epr_sockets[self.mittente]
+        #     connection = context.connection
+        #     # print("WAIT EPR")
+        #     epr = epr_socket.recv_keep()[0]
+        #     yield from connection.flush()
+        #     # print("EPR RECEIVED")
+        #
+        #     client_name, msg = yield from queue_protocol.pop()
+        #
+        #     self.msg = msg
+        #     print(self.msg)
+        #     m1, m2 = self.msg.split(",")
+        #     print("m1: " + m1.__str__() + " m2: " + m2.__str__())
+        #     if int(m2) == 1:
+        #         epr.X()
+        #     if int(m1) == 1:
+        #         epr.Z()
+        #
+        #     yield from connection.flush()
+        #
+        #     final_dm = get_qubit_state(epr, self.insieme)
+        #     if self.ultimo == 0:
+        #         print()
+        #         yield from create_quantum_link()
+        #     return {"final_dm": final_dm}
+
+        def create_quantum_link_iniziale(queue_protocol):
             csocket = context.csockets[self.mittente2]
             epr_socket = context.epr_sockets[self.mittente2]
-            # print(self.mittente2)
             connection = context.connection
-
             q = Qubit(connection)
             set_qubit_state(q, self.phi, self.theta)
             yield from connection.flush()
-            # print("QUBIT STATE")
             # Create EPR pairs
             csocket.send("Invio epr")
-            print("Invio avvernuto")
             epr = epr_socket.create_keep()[0]
             yield from connection.flush()
-            # print("EPR CREATE")
-            # Teleport
-            q.cnot(epr)
-            q.H()
 
-            m1 = q.measure()
-            m2 = epr.measure()
+            # invio segnale di buffer
+            csocket.send("sono il primo")
+            misurazioni_ottenute = []
+            client_name, msg = yield from queue_protocol.pop()
+            elementi = msg[1:-1].split(', ')
+            for i in elementi:
+                misurazioni_ottenute.append(i)
+            for i in misurazioni_ottenute:
+                if i == 1:
+                    epr.Z()
+            mo = epr.measure()
+            yield from connection.flush()
+            mo = int(mo)
+            print(self.insieme + " ho misurato: " + mo.__str__())
+
+        # def create_quantum_link_intermedio_iniziale(queue_protocol):
+        #     csocket1 = context.csockets[self.mittente]
+        #     csocket2 = context.csockets[self.mittente2]
+        #     epr_socket1 = context.epr_sockets[self.mittente]
+        #     epr_socket2 = context.epr_sockets[self.mittente2]
+        #     connection = context.connection
+        #     misurazioni = []
+        #     epr0 = epr_socket1.recv_keep()[0]
+        #     yield from connection.flush()
+        #     csocket2.send("Invio epr")
+        #     epr1 = epr_socket2.create_keep()[0]
+        #     yield from connection.flush()
+        #     epr0.cnot(epr1)
+        #     epr0.H()
+        #     m0 = epr0.measure()
+        #     m1 = epr1.measure()
+        #     csocket2.send(m1.__str__())
+        #     client_name, msg = yield from queue_protocol.pop()
+        #     elementi = msg[1:-1].split(', ')
+        #     for i in elementi:
+        #         misurazioni.append(i)
+        #     misurazioni.append(m0)
+        #     csocket1.send(misurazioni.__str__())
+
+        def create_quantum_link_intermedio(queue_protocol):
+            csocket1 = context.csockets[self.mittente]
+            csocket2 = context.csockets[self.mittente2]
+            epr_socket1 = context.epr_sockets[self.mittente]
+            epr_socket2 = context.epr_sockets[self.mittente2]
+            misurazioni_intermedie = []
+            misurazioni = []
+
+            connection = context.connection
+            epr0 = epr_socket1.recv_keep()[0]
             yield from connection.flush()
 
-            m1, m2 = int(m1), int(m2)
-            # self.logger.info(
-            #    f"Performed teleportation protocol with measured corrections: m1 = {m1}, m2 = {m2}"
-            # )
-            csocket.send(f"{m1},{m2}")
-            print("m1: " + m1.__str__() + " m2: " + m2.__str__())
-            original_dm = get_reference_state(self.phi, self.theta)
+            csocket2.send("Invio epr")
+            epr1 = epr_socket2.create_keep()[0]
+            yield from connection.flush()
+            # print("HELLO")
+            client_name, msg = yield from queue_protocol.pop()
+            if msg != "sono il primo":
+                elementi = msg[1:-1].split(', ')
+                for i in elementi:
+                    misurazioni_intermedie.append(int(i))
+            epr0.cnot(epr1)
+            epr0.H()
+            m0 = epr0.measure()
+            m1 = epr1.measure()
+            yield from connection.flush()
+            misurazioni_intermedie.append(int(m1))
+            csocket2.send(misurazioni_intermedie.__str__())
+            client_name, msg = yield from queue_protocol.pop()
+            if msg != "sono l'ultimo":
+                elementi = msg[1:-1].split(', ')
+                for i in elementi:
+                    misurazioni.append(int(i))
+            misurazioni.append(int(m0))
+            csocket1.send(misurazioni.__str__())
 
-            return {"m1": m1, "m2": m2, "original_dm": original_dm}
-
-        def rcv_quantum_link(queue_protocol):
+        def create_quantum_link_ultimo(queue_protocol):
             csocket = context.csockets[self.mittente]
             epr_socket = context.epr_sockets[self.mittente]
             connection = context.connection
-            # print("WAIT EPR")
+            q = Qubit(connection)
+            set_qubit_state(q, self.phi, self.theta)
+            yield from connection.flush()
             epr = epr_socket.recv_keep()[0]
             yield from connection.flush()
-            # print("EPR RECEIVED")
-
+            csocket.send("sono l'ultimo")
+            misurazioni_intermedie = []
             client_name, msg = yield from queue_protocol.pop()
-
-            self.msg = msg
-            print(self.msg)
-            m1, m2 = self.msg.split(",")
-            print("m1: " + m1.__str__() + " m2: " + m2.__str__())
-            if int(m2) == 1:
-                epr.X()
-            if int(m1) == 1:
-                epr.Z()
-
+            elementi = msg[1:-1].split(', ')
+            for i in elementi:
+                misurazioni_intermedie.append(i)
+            for i in misurazioni_intermedie:
+                if i == 1:
+                    epr.X()
+            mo = epr.measure()
             yield from connection.flush()
-
-            final_dm = get_qubit_state(epr, self.insieme)
-            if self.ultimo == 0:
-                print()
-                yield from create_quantum_link()
-            return {"final_dm": final_dm}
+            mo = int(mo)
+            print(self.insieme + " ho misurato: " + mo.__str__())
 
         if self.insieme == "A1":
             send_message("Voglio comunicare con D1")
