@@ -119,8 +119,8 @@ class Router(Program):
 
                 elif self.msg.startswith("Invio epr"):
                     self.mittente = client_name
-                    print("io insieme:" + self.insieme + " sto creando entanglement ")
                     self.ciclo = False
+                    print("io insieme:" + self.insieme + " sto creando entanglement ")
                     if self.ultimo == 0:
                         yield from create_quantum_link_intermedio(queue_protocol)
                     else:
@@ -149,6 +149,7 @@ class Router(Program):
             csocket = context.csockets[self.mittente]
             self.disponibilita = 1
             csocket.send("Ripristina disponibilita")
+
 
         # def create_quantum_link():
         #     csocket = context.csockets[self.mittente2]
