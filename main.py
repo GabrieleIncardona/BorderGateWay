@@ -29,25 +29,28 @@ def main():
     cfg = create_complete_graph_network(
         node_names,
         "perfect",
-        PerfectLinkConfig(state_delay=100),
+        PerfectLinkConfig(state_delay=0),
         clink_typ="default",
-        clink_cfg=DefaultCLinkConfig(delay=100),
+        clink_cfg=DefaultCLinkConfig(delay=0),
     )
 
-    # Creare un dizionario di programmi per ciascun nodo
-    programs = {}
-    for node_name in node_names:
-        link = []
-        for link_name in links:
-            if node_name in link_name:
-                for num in link_name:
-                    if num != node_name:
-                        link.append(num)
 
-        router = Router(node_name, link, TeleportParams.generate_random_params())
-        programs[node_name] = router
     #print(programs)
-    run(config=cfg, programs=programs, num_times=1)
+    for i in range(10):
+        # Creare un dizionario di programmi per ciascun nodo
+        programs = {}
+        for node_name in node_names:
+            link = []
+            for link_name in links:
+                if node_name in link_name:
+                    for num in link_name:
+                        if num != node_name:
+                            link.append(num)
+
+            router = Router(node_name, link, TeleportParams.generate_random_params())
+            programs[node_name] = router
+        run(config=cfg, programs=programs, num_times=1)
+        print('\n')
 
 
 if __name__ == "__main__":

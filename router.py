@@ -58,11 +58,11 @@ class Router(Program):
             csocket2 = context.csockets[self.link[1]]
             self.iniziatore = 1
             self.msg = msg
+            self.disponibilita = 0
             # yield from connection.flush()
 
             csocket1.send(msg)
             csocket2.send(msg)
-            # print("Hello")
 
         def receive_message():
             queue_protocol = QueueProtocol()
@@ -77,14 +77,13 @@ class Router(Program):
 
             while self.ciclo:
                 client_name, msg = yield from queue_protocol.pop()
-                # print("io insieme:" + self.insieme + " ho ricevuto: " + client_name)
-                # print("io insieme:" + self.insieme + " ho ricevuto: " + msg)
 
                 if client_name == self.link[0]:
                     self.collegamento = self.link[1]
                 else:
                     self.collegamento = self.link[0]
                 self.msg = msg
+                # print(f"{self.insieme} ho ricevuto {self.msg} ")
                 if self.msg.startswith("Voglio comunicare con "):
                     self.mittente = client_name
                     sottomessaggio = self.msg.split("Voglio comunicare con ")
@@ -97,7 +96,6 @@ class Router(Program):
                             Notsend_risposta()
                     else:
                         if self.disponibilita == 1:
-                            print("io insieme:" + self.insieme + " sto inviando: " + msg)
                             chiedi_disponibilita()
                         else:
                             Notsend_risposta()
@@ -109,7 +107,7 @@ class Router(Program):
                         if self.iniziatore == 0:
                             send_risposta()
                         else:
-                            print("io insieme:" + self.insieme + " sto creando entanglement ")
+                            # print("io insieme:" + self.insieme + " sto creando entanglement ")
                             self.mittente = client_name
                             self.mittente2 = client_name
                             self.ciclo = False
@@ -120,7 +118,7 @@ class Router(Program):
                 elif self.msg.startswith("Invio epr"):
                     self.mittente = client_name
                     self.ciclo = False
-                    print("io insieme:" + self.insieme + " sto creando entanglement ")
+                    # print("io insieme:" + self.insieme + " sto creando entanglement ")
                     if self.ultimo == 0:
                         yield from create_quantum_link_intermedio(queue_protocol)
                     else:
@@ -128,8 +126,6 @@ class Router(Program):
                 elif self.msg == "Ripristina disponibilita":
                     ripristina_disponibilita()
 
-                else:
-                    return
                 self.msg = " "
 
         def chiedi_disponibilita():
@@ -138,7 +134,6 @@ class Router(Program):
 
         def send_risposta():
             csocket = context.csockets[self.mittente]
-            print("io insieme:" + self.insieme + " sto inviando: Disponibile")
             csocket.send("Disponibile")
 
         def Notsend_risposta():
@@ -159,13 +154,13 @@ class Router(Program):
         #     q = Qubit(connection)
         #     set_qubit_state(q, self.phi, self.theta)
         #     yield from connection.flush()
-        #     # print("QUBIT STATE")
+        #     print("QUBIT STATE")
         #     # Create EPR pairs
         #     csocket.send("Invio epr")
         #     print("Invio avvernuto")
         #     epr = epr_socket.create_keep()[0]
         #     yield from connection.flush()
-        #     # print("EPR CREATE")
+        #     print("EPR CREATE")
         #     # Teleport
         #     q.cnot(epr)
         #     q.H()
@@ -188,10 +183,10 @@ class Router(Program):
         #     csocket = context.csockets[self.mittente]
         #     epr_socket = context.epr_sockets[self.mittente]
         #     connection = context.connection
-        #     # print("WAIT EPR")
+        #     print("WAIT EPR")
         #     epr = epr_socket.recv_keep()[0]
         #     yield from connection.flush()
-        #     # print("EPR RECEIVED")
+        #     print("EPR RECEIVED")
         #
         #     client_name, msg = yield from queue_protocol.pop()
         #
@@ -228,12 +223,15 @@ class Router(Program):
             csocket.send("sono il primo")
             misurazioni_ottenute = []
             client_name, msg = yield from queue_protocol.pop()
+            # print(f"{self.insieme } ho ricevuto {msg}")
             elementi = msg[1:-1].split(', ')
             for i in elementi:
                 misurazioni_ottenute.append(i)
             for i in misurazioni_ottenute:
-                if i == 1:
+                if i == '1':
                     epr.Z()
+            yield from connection.flush()
+            # print(f"{self.insieme}: {get_qubit_state(epr, node_name=self.insieme, full_state=True)}")
             mo = epr.measure()
             yield from connection.flush()
             mo = int(mo)
@@ -278,8 +276,8 @@ class Router(Program):
             csocket2.send("Invio epr")
             epr1 = epr_socket2.create_keep()[0]
             yield from connection.flush()
-            # print("HELLO")
             client_name, msg = yield from queue_protocol.pop()
+            # print(f"{self.insieme} ho ricevuto {msg} da {client_name}")
             if msg != "sono il primo":
                 elementi = msg[1:-1].split(', ')
                 for i in elementi:
@@ -312,16 +310,24 @@ class Router(Program):
             misurazioni_intermedie = []
             client_name, msg = yield from queue_protocol.pop()
             elementi = msg[1:-1].split(', ')
+            # print(f"{self.insieme} ho ricevuto {msg}")
             for i in elementi:
                 misurazioni_intermedie.append(i)
             for i in misurazioni_intermedie:
-                if i == 1:
+                if i == '1':
                     epr.X()
+            yield from connection.flush()
+            # print(f"{self.insieme}: {get_qubit_state(epr, node_name=self.insieme, full_state=True)}")
             mo = epr.measure()
             yield from connection.flush()
             mo = int(mo)
             print(self.insieme + " ho misurato: " + mo.__str__())
 
+
+        #self.disponibilita = 1
+
         if self.insieme == "A1":
             send_message("Voglio comunicare con D1")
+        if self.insieme == "A2":
+            send_message("Voglio comunicare con D2")
         yield from receive_message()
