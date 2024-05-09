@@ -131,7 +131,6 @@ class Router(Program):
                     yield from self.create_quantum_link_intermedio(queue_protocol, context)
                 else:
                     yield from self.create_quantum_link_ultimo(queue_protocol, context)
-
             elif self.msg == "Ripristina disponibilita":
                 self.ripristina_disponibilita(context)
 
