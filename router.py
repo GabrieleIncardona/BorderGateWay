@@ -1,3 +1,5 @@
+import random
+
 import numpy
 
 from netsquid_protocols import QueueProtocol, CSocketListener
@@ -34,13 +36,16 @@ class Router(Program):
     ultimo = 0
     collegamento_gia_creato = 0
     ciclo = True
+    receveid = ""
 
-    def __init__(self, insieme, link, params: TeleportParams):
+    def __init__(self, insieme, link, params: TeleportParams, senders, receiveds):
         self.logger = LogManager.get_stack_logger(self.__class__.__name__)
         self.insieme = insieme
         self.link = link
         self.phi = params.phi
         self.theta = params.theta
+        self.senders = senders
+        self.receiveds = receiveds
 
     @property
     def meta(self) -> ProgramMeta:
@@ -54,10 +59,14 @@ class Router(Program):
     def run(self, context: ProgramContext):
         # self.disponibilita = 1
 
-        if self.insieme == "A1":
-            self.send_message("Voglio comunicare con D1", context)
-        if self.insieme == "A2":
-            self.send_message("Voglio comunicare con D2", context)
+        # if self.insieme == "A1":
+        #    self.send_message("Voglio comunicare con D1", context)
+
+        if self.insieme in self.senders:
+            self.receveid = random.choice(self.receiveds)
+            if self.insieme != self.receveid:
+                self.send_message(f"Voglio comunicare con {self.receveid}", context)
+
         yield from self.receive_message(context)
 
     def send_message(self, msg, context):

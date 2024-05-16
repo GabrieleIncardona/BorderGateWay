@@ -1,4 +1,5 @@
 import traceback
+import random
 
 from netsquid_magic.models.perfect import PerfectLinkConfig
 from netsquid_netbuilder.modules.clinks.default import DefaultCLinkConfig
@@ -11,8 +12,18 @@ from squidasm.run.stack.run import run
 
 
 def main():
+
+    N = 8
+
+    while True:
+        number_comunication = int(input("Enter a number between 1 and 4: "))
+        if 1 <= number_comunication <= N / 2:
+            break
+        else:
+            print("number not valid.")
+
     params = TeleportParams.generate_random_params()
-    # Definire i nodi e i collegamenti della rete
+    # Define the nodes and links of the network
     node_names = ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]
     links = [
         ["A1", "A2"],
@@ -36,7 +47,12 @@ def main():
 
     #print(programs)
     for i in range(10):
-        # Creare un dizionario di programmi per ciascun nodo
+
+        senders = random.sample(node_names, number_comunication)
+        received = random.sample(node_names, number_comunication)
+        print(senders)
+        print(received)
+        # Create a program dictionary for each node
         programs = {}
         for node_name in node_names:
             link = []
@@ -46,7 +62,7 @@ def main():
                         if num != node_name:
                             link.append(num)
 
-            router = Router(node_name, link, TeleportParams.generate_random_params())
+            router = Router(node_name, link, TeleportParams.generate_random_params(), senders, received)
             programs[node_name] = router
         run(config=cfg, programs=programs, num_times=1)
         print('\n')
@@ -56,6 +72,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        # Gestione degli errori
-        print(f"Si è verificato un errore: {e}")
+        # Error handling
+        print(f"An error occurred: {e}")
         traceback.print_exc()
