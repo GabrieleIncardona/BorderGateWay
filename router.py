@@ -28,7 +28,6 @@ class TeleportParams:
 class Router(Program):
     msg = ""
     disponibilita = 1
-    collegamento = None
     mittente = None
     mittente2 = None
     iniziatore = 0
@@ -62,34 +61,37 @@ class Router(Program):
         yield from self.receive_message(context)
 
     def send_message(self, msg, context):
-        csocket1 = context.csockets[self.link[0]]
-        csocket2 = context.csockets[self.link[1]]
+        csocket = []
+        for i in range(len(self.link)):
+            csocket.append(context.csockets[self.link[i]])
         self.iniziatore = 1
         self.msg = msg
         self.disponibilita = 0
         # yield from connection.flush()
-
-        csocket1.send(msg)
-        csocket2.send(msg)
+        for i in range(len(self.link)):
+            csocket[i].send(msg)
 
     def receive_message(self, context):
+        # if self.insieme == "B1":
+        #    print(f"{self.insieme:} {self.link}")
         queue_protocol = QueueProtocol()
         queue_protocol.start()
 
-        listener = (
-            CSocketListener(context, self.link[0], queue_protocol, self.logger))
-        listener.start()
+        collegamento = []
 
-        listener = CSocketListener(context, self.link[1], queue_protocol, self.logger)
-        listener.start()
-
+        for i in range(len(self.link)):
+            listener = (
+                CSocketListener(context, self.link[i], queue_protocol, self.logger))
+            listener.start()
         while self.ciclo:
             client_name, msg = yield from queue_protocol.pop()
+            # print(client_name)
 
-            if client_name == self.link[0]:
-                self.collegamento = self.link[1]
-            else:
-                self.collegamento = self.link[0]
+            for i in range(len(self.link)):
+                if self.link[i] != client_name:
+                    collegamento.append(self.link[i])
+                    #print(f"{self.insieme} {self.link[i]}")
+
             self.msg = msg
             # print(f"{self.insieme} ho ricevuto {self.msg} ")
             if self.msg.startswith("Voglio comunicare con "):
@@ -104,13 +106,15 @@ class Router(Program):
                         self.Notsend_risposta(context)
                 else:
                     if self.disponibilita == 1:
-                        self.chiedi_disponibilita(context)
+                        self.chiedi_disponibilita(context, collegamento)
                     else:
                         self.Notsend_risposta(context)
             elif self.msg == "Disponibile":
                 if self.collegamento_gia_creato == 0:
                     self.collegamento_gia_creato = 1
                     self.mittente2 = client_name
+
+                    #print(f"{self.insieme} disponibile")
 
                     if self.iniziatore == 0:
                         self.send_risposta(context)
@@ -136,9 +140,11 @@ class Router(Program):
 
             self.msg = " "
 
-    def chiedi_disponibilita(self, context):
-        csocket = context.csockets[self.collegamento]
-        csocket.send(self.msg)
+    def chiedi_disponibilita(self, context, collegamento):
+        #print(f"{self.insieme} {collegamento}")
+        for i in range(len(collegamento)):
+            csocket = context.csockets[collegamento[i]]
+            csocket.send(self.msg)
 
     def send_risposta(self, context):
         csocket = context.csockets[self.mittente]

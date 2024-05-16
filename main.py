@@ -34,7 +34,6 @@ def main():
         clink_cfg=DefaultCLinkConfig(delay=0),
     )
 
-
     #print(programs)
     for i in range(10):
         # Creare un dizionario di programmi per ciascun nodo
