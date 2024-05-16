@@ -132,7 +132,7 @@ class Router(Program):
                     self.collegamento_gia_creato = 1
                     self.mittente2 = client_name
 
-                    #print(f"{self.insieme} disponibile")
+                    # print(f"{self.insieme} disponibile")
 
                     if self.iniziatore == 0:
                         self.send_risposta(context)
@@ -158,6 +158,7 @@ class Router(Program):
 
             elif self.msg == "direct connection":
                 self.mittente = client_name
+                self.disponibilita = 0
                 yield from self.create_quantum_link_direct_received(queue_protocol, context)
 
             elif self.msg == "would like to communicate with":
@@ -167,7 +168,7 @@ class Router(Program):
             self.msg = " "
 
     def chiedi_disponibilita(self, context, collegamento):
-        #print(f"{self.insieme} {collegamento}")
+        # print(f"{self.insieme} {collegamento}")
         for i in range(len(collegamento)):
             csocket = context.csockets[collegamento[i]]
             csocket.send(self.msg)
@@ -308,7 +309,12 @@ class Router(Program):
         yield from connection.flush()
 
         # Get the corrections
-        client_name, msg = yield from queue_protocol.pop()
+        while True:
+            client_name, msg = yield from queue_protocol.pop()
+            if msg.isdigit():
+                break
+            csocket1 = context.csockets[client_name]
+            csocket1.send("No disponibile")
         m1 = int(msg)
         if int(m1) == 1:
             epr.Z()
