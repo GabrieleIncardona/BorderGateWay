@@ -66,19 +66,28 @@ class Router(Program):
             self.receveid = random.choice(self.receiveds)
             if self.insieme != self.receveid:
                 self.send_message(f"Voglio comunicare con {self.receveid}", context)
+                print(f"{self.insieme} would like to communicate with {self.receveid}")
 
         yield from self.receive_message(context)
 
     def send_message(self, msg, context):
-        csocket = []
-        for i in range(len(self.link)):
-            csocket.append(context.csockets[self.link[i]])
-        self.iniziatore = 1
-        self.msg = msg
-        self.disponibilita = 0
-        # yield from connection.flush()
-        for i in range(len(self.link)):
-            csocket[i].send(msg)
+        if self.receveid in self.link:
+            csocket1 = context.csockets[self.receveid]
+            csocket1.send("direct connection")
+            self.iniziatore = 1
+            self.msg = msg
+            self.disponibilita = 0
+            return
+        else:
+            csocket = []
+            for i in range(len(self.link)):
+                csocket.append(context.csockets[self.link[i]])
+            self.iniziatore = 1
+            self.msg = msg
+            self.disponibilita = 0
+            # yield from connection.flush()
+            for i in range(len(self.link)):
+                csocket[i].send(msg)
 
     def receive_message(self, context):
         # if self.insieme == "B1":
@@ -146,6 +155,14 @@ class Router(Program):
                     yield from self.create_quantum_link_ultimo(queue_protocol, context)
             elif self.msg == "Ripristina disponibilita":
                 self.ripristina_disponibilita(context)
+
+            elif self.msg == "direct connection":
+                self.mittente = client_name
+                yield from self.create_quantum_link_direct_received(queue_protocol, context)
+
+            elif self.msg == "would like to communicate with":
+                self.mittente = client_name
+                yield from self.create_quantum_link_direct_sender(context)
 
             self.msg = " "
 
@@ -259,3 +276,43 @@ class Router(Program):
         yield from connection.flush()
         mo = int(mo)
         print(self.insieme + " ho misurato: " + mo.__str__())
+
+    def create_quantum_link_direct_sender(self, context):
+        csocket = context.csockets[self.mittente]
+        epr_socket = context.epr_sockets[self.mittente]
+        connection = context.connection
+
+        q = Qubit(connection)
+        set_qubit_state(q, self.phi, self.theta)
+
+        # Create EPR pairs
+        epr = epr_socket.create_keep()[0]
+
+        m1 = epr.measure()
+        yield from connection.flush()
+
+        # Send the correction information
+        m1 = int(m1)
+
+        csocket.send(m1)
+
+        print(self.insieme + " ho misurato: " + m1.__str__())
+
+    def create_quantum_link_direct_received(self, queue_protocol, context):
+        csocket = context.csockets[self.mittente]
+        epr_socket = context.epr_sockets[self.mittente]
+        connection = context.connection
+        csocket.send("would like to communicate with")
+
+        epr = epr_socket.recv_keep()[0]
+        yield from connection.flush()
+
+        # Get the corrections
+        client_name, msg = yield from queue_protocol.pop()
+        m1 = int(msg)
+        if int(m1) == 1:
+            epr.X()
+        m2 = epr.measure()
+        yield from connection.flush()
+        m2 = int(m2)
+        print(self.insieme + " ho misurato: " + m2.__str__())
