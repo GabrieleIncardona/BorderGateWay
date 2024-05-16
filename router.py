@@ -311,7 +311,7 @@ class Router(Program):
         client_name, msg = yield from queue_protocol.pop()
         m1 = int(msg)
         if int(m1) == 1:
-            epr.X()
+            epr.Z()
         m2 = epr.measure()
         yield from connection.flush()
         m2 = int(m2)
