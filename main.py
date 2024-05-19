@@ -16,7 +16,7 @@ def main():
     N = 8
 
     while True:
-        number_comunication = int(input("Enter a number between 1 and 4: "))
+        number_comunication = int(input(f"Enter a number between 1 and {N/2}: "))
         if 1 <= number_comunication <= N / 2:
             break
         else:
