@@ -24,7 +24,10 @@ def main():
 
     params = TeleportParams.generate_random_params()
     # Define the nodes and links of the network
-    node_names = ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]
+    node_names = []
+    for letter in range(ord('A'), ord('D') + 1):
+        for i in range(2):
+            node_names.append(f"{chr(letter)}{i+1}")
     links = [
         ["A1", "A2"],
         ["A1", "B1"],
