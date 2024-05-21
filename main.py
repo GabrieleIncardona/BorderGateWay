@@ -13,7 +13,7 @@ from squidasm.run.stack.run import run
 
 def main():
 
-    N = 8
+    N = 20
 
     while True:
         number_comunication = int(input(f"Enter a number between 1 and {N/2}: "))
@@ -25,18 +25,48 @@ def main():
     params = TeleportParams.generate_random_params()
     # Define the nodes and links of the network
     node_names = []
-    for letter in range(ord('A'), ord('D') + 1):
-        for i in range(2):
+    for letter in range(ord('A'), ord('E') + 1):
+        for i in range(4):
             node_names.append(f"{chr(letter)}{i+1}")
     links = [
         ["A1", "A2"],
-        ["A1", "B1"],
-        ["A2", "C1"],
+        ["A1", "A3"],
+        ["A1", "A4"],
+        ["A2", "A3"],
+        ["A2", "A4"],
+        ["A3", "A4"],
+        ["A4", "B1"],
+
         ["B1", "B2"],
-        ["B2", "D1"],
+        ["B1", "B3"],
+        ["B1", "B4"],
+        ["B2", "B3"],
+        ["B2", "B4"],
+        ["B3", "B4"],
+        ["B4", "C1"],
+        ["B2", "D3"],
+        ["B3", "E2"],
+
         ["C1", "C2"],
-        ["C2", "D2"],
-        ["D1", "D2"]
+        ["C1", "C3"],
+        ["C1", "C4"],
+        ["C2", "C3"],
+        ["C2", "C4"],
+        ["C3", "C4"],
+
+        ["D1", "D2"],
+        ["D1", "D3"],
+        ["D1", "D4"],
+        ["D2", "D3"],
+        ["D2", "D4"],
+        ["D3", "D4"],
+
+        ["E1", "E2"],
+        ["E1", "E3"],
+        ["E1", "E4"],
+        ["E2", "E3"],
+        ["E2", "E4"],
+        ["E3", "E4"]
     ]
 
     # import network configuration from file
