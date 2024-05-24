@@ -34,8 +34,9 @@ class Router(Program):
     initiator = 0
     last = 0
     link_already_created = 0
-    cycle = True
+
     receiver = ""
+    first = ""
 
     def __init__(self, jointly, link, params: TeleportParams, senders, receivers):
         self.logger = LogManager.get_stack_logger(self.__class__.__name__)
@@ -60,7 +61,7 @@ class Router(Program):
         if self.jointly in self.senders:
             self.receiver = random.choice(self.receivers)
             if self.jointly != self.receiver:
-                self.send_message(f"I want to communicate with {self.receiver}", context)
+                self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
                 print(f"{self.jointly} would like to communicate with {self.receiver}")
 
         yield from self.receive_message(context)
@@ -89,12 +90,13 @@ class Router(Program):
         queue_protocol.start()
 
         connection = []
+        request = []
 
         for i in range(len(self.link)):
             listener = (
                 CSocketListener(context, self.link[i], queue_protocol, self.logger))
             listener.start()
-        while self.cycle:
+        while True:
             client_name, msg = yield from queue_protocol.pop()
 
             for i in range(len(self.link)):
@@ -102,24 +104,34 @@ class Router(Program):
                     connection.append(self.link[i])
 
             self.msg = msg
-            if self.msg.startswith("I want to communicate with "):
-                submission = self.msg.split("I want to communicate with ")
+            if "want to communicate with" in msg:
+                submission = self.msg.split("want to communicate with ")
                 if self.jointly == submission[1]:
                     if self.availability == 1:
                         self.availability = 0
                         self.last = 1
                         self.sender = client_name
                         self.send_answer(context)
+                        string = msg.split(" ")
+                        self.first = string[0]
+                        if self.link_already_created == 0:
+                            self.link_already_created = 1
 
                     else:
-                        self.Notsend_answer(context, client_name)
+                        self.Restore_availability(context, client_name)
+                        # with open('file.txt', 'a') as f:
+                        #   f.write('')
+                        request.append((msg, client_name))
+
                 else:
                     if self.availability == 1:
                         self.availability = 0
                         self.sender = client_name
                         self.ask_availability(context, connection)
+
                     else:
-                        self.Notsend_answer(context, client_name)
+                        request.append((msg, client_name))
+
             elif self.msg == "Available":
                 if self.link_already_created == 0:
                     self.link_already_created = 1
@@ -131,34 +143,37 @@ class Router(Program):
                         self.sender = client_name
                         self.sender2 = client_name
                         # self.cycle = False
-                        yield from self.create_quantum_link_initial(queue_protocol, context)
-                else:
-                    self.Restore_availability(context)
-            elif self.msg == "No Available":
-                if self.availability == 0 and self.initiator == 0:
-                    self.Restore_availability(context)
+                        yield from self.create_quantum_link_initial(queue_protocol, context, request)
+
+            # elif self.msg == "No Available":
+            #    if self.availability == 0 and self.initiator == 0:
+            #        self.Restore_availability(context)
 
             elif self.msg.startswith("Sending epr"):
                 self.sender = client_name
                 # self.cycle = False
                 if self.last == 0:
-                    yield from self.create_quantum_link_intermediate(queue_protocol, context)
+                    yield from self.create_quantum_link_intermediate(queue_protocol, context, request)
                 else:
-                    yield from self.create_quantum_link_last(queue_protocol, context)
+                    yield from self.create_quantum_link_last(queue_protocol, context, request)
             elif self.msg == "Restore availability":
                 if self.availability == 0 and self.initiator == 0:
-                    self.Restore_availability(context)
+                    self.Restore_availability(context, client_name)
+                    self.availability = 1
+                    # print(f"{self.jointly}")
+                elif self.initiator == 1:
+                    self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
 
             elif self.msg == "direct connection":
                 self.sender = client_name
                 self.availability = 0
-                yield from self.create_quantum_link_direct_received(queue_protocol, context)
+                yield from self.create_quantum_link_direct_received(queue_protocol, context, request)
 
             elif self.msg == "would like to communicate with":
                 self.sender = client_name
-                yield from self.create_quantum_link_direct_sender(context)
+                yield from self.create_quantum_link_direct_sender(context, request)
 
-            self.msg = " "
+
 
     def ask_availability(self, context, connection):
         for i in range(len(connection)):
@@ -173,12 +188,12 @@ class Router(Program):
         csocket = context.csockets[client_name]
         csocket.send("No Available")
 
-    def Restore_availability(self, context):
-        csocket = context.csockets[self.sender]
+    def Restore_availability(self, context, client_name):
+        csocket = context.csockets[client_name]
         # self.availability = 1
         csocket.send("Restore availability")
 
-    def create_quantum_link_initial(self, queue_protocol, context):
+    def create_quantum_link_initial(self, queue_protocol, context, request):
         csocket = context.csockets[self.sender2]
         epr_socket = context.epr_sockets[self.sender2]
         connection = context.connection
@@ -205,9 +220,10 @@ class Router(Program):
         yield from connection.flush()
         mo = int(mo)
         print(self.jointly + " I measured: " + mo.__str__())
-        self.availability = 1
+        self.restore_values()
+        yield from self.message_checker(context, request, queue_protocol)
 
-    def create_quantum_link_intermediate(self, queue_protocol, context):
+    def create_quantum_link_intermediate(self, queue_protocol, context, request):
         csocket1 = context.csockets[self.sender]
         csocket2 = context.csockets[self.sender2]
         epr_socket1 = context.epr_sockets[self.sender]
@@ -223,7 +239,7 @@ class Router(Program):
         epr1 = epr_socket2.create_keep()[0]
         yield from connection.flush()
         client_name, msg = yield from queue_protocol.pop()
-        
+
         if msg != "I'm the first":
             elements = msg[1:-1].split(', ')
             for i in elements:
@@ -242,9 +258,10 @@ class Router(Program):
                 measurements.append(int(i))
         measurements.append(int(m0))
         csocket1.send(measurements.__str__())
-        self.availability = 1
+        self.restore_values()
+        yield from self.message_checker(context, request, queue_protocol)
 
-    def create_quantum_link_last(self, queue_protocol, context):
+    def create_quantum_link_last(self, queue_protocol, context, request):
         csocket = context.csockets[self.sender]
         epr_socket = context.epr_sockets[self.sender]
         connection = context.connection
@@ -267,9 +284,10 @@ class Router(Program):
         yield from connection.flush()
         mo = int(mo)
         print(self.jointly + " I measured: " + mo.__str__())
-        self.availability = 1
+        self.restore_values()
+        yield from self.message_checker(context, request, queue_protocol)
 
-    def create_quantum_link_direct_sender(self, context):
+    def create_quantum_link_direct_sender(self, context, request):
         csocket = context.csockets[self.sender]
         epr_socket = context.epr_sockets[self.sender]
         connection = context.connection
@@ -289,9 +307,13 @@ class Router(Program):
         csocket.send(m1)
 
         print(self.jointly + " I measured: " + m1.__str__())
-        self.availability = 1
+        self.restore_values()
+        queue_protocol = QueueProtocol()
+        queue_protocol.start()
+        self.restore_values()
+        yield from self.message_checker(context, request, queue_protocol)
 
-    def create_quantum_link_direct_received(self, queue_protocol, context):
+    def create_quantum_link_direct_received(self, queue_protocol, context, request):
         csocket = context.csockets[self.sender]
         epr_socket = context.epr_sockets[self.sender]
         connection = context.connection
@@ -314,4 +336,53 @@ class Router(Program):
         yield from connection.flush()
         m2 = int(m2)
         print(self.jointly + " I measured: " + m2.__str__())
+        self.restore_values()
+        yield from self.message_checker(context, request, queue_protocol)
+
+    def message_checker(self, context, request, queue_protocol):
+        request_non_startswith_first = [item for item in request if not item[0].startswith(self.first)]
+        request = request_non_startswith_first
+        # print(request)
+        if len(request) > 0:
+            msg, client_name = request.pop()
+            # print(client_name)
+            connection = []
+
+            for i in range(len(self.link)):
+                if self.link[i] != client_name:
+                    connection.append(self.link[i])
+            self.msg = msg
+            # print(msg)
+            # print(f"{self.jointly}: {client_name}")
+            if "want to communicate with" in msg:
+                submission = self.msg.split("want to communicate with ")
+                if self.jointly == submission[1]:
+                    self.availability = 0
+                    self.last = 1
+                    self.sender = client_name
+                    self.send_answer(context)
+                    string = msg.split(" ")
+                    self.first = string[0]
+                    if self.link_already_created == 0:
+                        self.link_already_created = 1
+                else:
+                    if self.availability == 1:
+                        self.availability = 0
+                        self.sender = client_name
+                        self.ask_availability(context, connection)
+
+            elif msg == "direct connection":
+                self.sender = client_name
+                self.availability = 0
+                print("direct connection")
+                yield from self.create_quantum_link_direct_received(queue_protocol, context, request)
+
+    def restore_values(self):
+        self.msg = ""
         self.availability = 1
+        self.sender = None
+        self.sender2 = None
+        self.initiator = 0
+        self.last = 0
+        self.link_already_created = 0
+        self.receiver = ""

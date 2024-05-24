@@ -13,7 +13,7 @@ from squidasm.run.stack.run import run
 
 def main():
 
-    N = 20
+    N = 36
 
     while True:
         number_comunication = int(input(f"Enter a number between 1 and {N/2}: "))
@@ -25,7 +25,7 @@ def main():
     params = TeleportParams.generate_random_params()
     # Define the nodes and links of the network
     node_names = []
-    for letter in range(ord('A'), ord('E') + 1):
+    for letter in range(ord('A'), ord('I') + 1):
         for i in range(4):
             node_names.append(f"{chr(letter)}{i+1}")
     links = [
@@ -66,7 +66,47 @@ def main():
         ["E1", "E4"],
         ["E2", "E3"],
         ["E2", "E4"],
-        ["E3", "E4"]
+        ["E3", "E4"],
+
+        ["F1", "F2"],
+        ["F1", "F3"],
+        ["F1", "F4"],
+        ["F2", "F3"],
+        ["F2", "F4"],
+        ["F3", "F4"],
+
+        ["F2", "A3"],
+        ["F4", "E1"],
+
+        ["G1", "G2"],
+        ["G1", "G3"],
+        ["G1", "G4"],
+        ["G2", "G3"],
+        ["G2", "G4"],
+        ["G3", "G4"],
+
+        ["G3", "A2"],
+        ["G4", "D1"],
+
+        ["H1", "H2"],
+        ["H1", "H3"],
+        ["H1", "H4"],
+        ["H2", "H3"],
+        ["H2", "H4"],
+        ["H3", "H4"],
+
+        ["H1", "E4"],
+        ["H2", "C3"],
+
+        ["I1", "I2"],
+        ["I1", "I3"],
+        ["I1", "I4"],
+        ["I2", "I3"],
+        ["I2", "I4"],
+        ["I3", "I4"],
+
+        ["I1", "D4"],
+        ["I3", "C2"]
     ]
 
     # import network configuration from file
@@ -79,7 +119,7 @@ def main():
     )
 
     #print(programs)
-    for i in range(10):
+    for i in range(100):
 
         senders = random.sample(node_names, number_comunication)
         received = random.sample(node_names, number_comunication)
