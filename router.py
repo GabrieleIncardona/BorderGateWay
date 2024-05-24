@@ -146,7 +146,7 @@ class Router(Program):
                         self.sender2 = client_name
                         print(f"{counter}")
                         with open('test.txt', 'a') as f:
-                            f.write(f"{self.jointly} Link with 1 hope\n")
+                            f.write(f"{self.jointly} Link with {counter} hope\n")
                         yield from self.create_quantum_link_initial(queue_protocol, context, request)
 
             # elif self.msg == "No Available":
@@ -176,7 +176,7 @@ class Router(Program):
             elif self.msg == "would like to communicate with":
                 self.sender = client_name
                 with open('test.txt', 'a') as f:
-                    f.write(f"{self.jointly} Link with {counter} hope\n")
+                    f.write(f"{self.jointly} Link with 1 hope\n")
                 yield from self.create_quantum_link_direct_sender(context, request)
 
     def ask_availability(self, context, connection):
