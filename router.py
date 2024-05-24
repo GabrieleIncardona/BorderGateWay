@@ -123,7 +123,7 @@ class Router(Program):
                             self.link_already_created = 1
 
                     else:
-                        self.Restore_availability(context, client_name)
+                        # self.Restore_availability(context, client_name)
                         # with open('file.txt', 'a') as f:
                         #   f.write('')
                         request.append((msg, client_name))
@@ -170,8 +170,8 @@ class Router(Program):
                 else:
                     yield from self.create_quantum_link_last(queue_protocol, context, request)
             elif msg == "Restore availability":
-                if self.availability == 0 and self.initiator == 0:
-                    self.Restore_availability(context, client_name)
+                if self.availability == 0 and self.initiator == 0 :
+                    self.Restore_availability(context)
                     self.availability = 1
                     # print(f"{self.jointly}")
                 elif self.initiator == 1:
@@ -187,7 +187,7 @@ class Router(Program):
                 self.sender = client_name
                 with open('test.txt', 'a') as f:
                     f.write(f"{self.jointly} Link with 1 hope with {self.receiver}\n")
-                yield from self.create_quantum_link_direct_sender(context, request)
+                yield from self.create_quantum_link_direct_sender(context, request, queue_protocol)
             self.msg = ""
 
     def ask_availability(self, context, connection):
@@ -203,8 +203,8 @@ class Router(Program):
         csocket = context.csockets[client_name]
         csocket.send("No Available")
 
-    def Restore_availability(self, context, client_name):
-        csocket = context.csockets[client_name]
+    def Restore_availability(self, context):
+        csocket = context.csockets[self.sender]
         # self.availability = 1
         csocket.send("Restore availability")
 
@@ -225,7 +225,7 @@ class Router(Program):
         measurements_obtained = []
         while True:
             client_name, msg = yield from queue_protocol.pop()
-            if "want to communicate with" not in msg:
+            if "want to communicate with" not in msg and "Restore availability" not in msg :
                 break
             request.append((msg, client_name))
         elements = msg[1:-1].split(', ')
@@ -243,7 +243,7 @@ class Router(Program):
         elapsed_time = self.end_time - self.start_time
         with open('time.txt', 'a') as f:
             f.write(f"{self.jointly} connected with a delay of {elapsed_time} with {self.receiver}\n")
-
+        self.send_message("Restore availability", context)
         self.restore_values()
         yield from self.message_checker(context, request, queue_protocol)
 
@@ -272,7 +272,7 @@ class Router(Program):
         # client_name, msg = yield from queue_protocol.pop()
         while True:
             client_name, msg = yield from queue_protocol.pop()
-            if "want to communicate with" not in msg:
+            if "want to communicate with" not in msg and "Restore availability" not in msg:
                 break
             request.append((msg, client_name))
         if msg == "I'm the first":
@@ -299,7 +299,7 @@ class Router(Program):
 
         while True:
             client_name, msg = yield from queue_protocol.pop()
-            if "want to communicate with" not in msg:
+            if "want to communicate with" not in msg and "Restore availability" not in msg:
                 break
             request.append((msg, client_name))
         if msg == "I'm the first":
@@ -340,7 +340,7 @@ class Router(Program):
         intermediate_measurements = []
         while True:
             client_name, msg = yield from queue_protocol.pop()
-            if "want to communicate with" not in msg:
+            if "want to communicate with" not in msg and "Restore availability" not in msg:
                 break
             request.append((msg, client_name))
         elements = msg[1:-1].split(', ')
@@ -357,7 +357,7 @@ class Router(Program):
         self.restore_values()
         yield from self.message_checker(context, request, queue_protocol)
 
-    def create_quantum_link_direct_sender(self, context, request):
+    def create_quantum_link_direct_sender(self, context, request, queue_protocol):
         csocket = context.csockets[self.sender]
         epr_socket = context.epr_sockets[self.sender]
         connection = context.connection
@@ -377,9 +377,6 @@ class Router(Program):
         csocket.send(m1)
 
         print(self.jointly + " I measured: " + m1.__str__())
-        self.restore_values()
-        queue_protocol = QueueProtocol()
-        queue_protocol.start()
         self.restore_values()
         self.end_time = time.time()
         elapsed_time = self.end_time - self.start_time
@@ -401,6 +398,7 @@ class Router(Program):
             client_name, msg = yield from queue_protocol.pop()
             if msg.isdigit():
                 break
+            request.append((msg,client_name))
             csocket1 = context.csockets[client_name]
         m1 = int(msg)
         if int(m1) == 1:
@@ -413,14 +411,15 @@ class Router(Program):
         yield from self.message_checker(context, request, queue_protocol)
 
     def message_checker(self, context, request, queue_protocol):
-        request_non_startswith_first = [item for item in request if not item[0].startswith(self.first)]
+        request_non_startswith_first = [item for item in request if not item[0].startswith(self.first) and item[0] != "Restore_availability"]
         # print(f"{self.jointly}: {self.first}")
         request = request_non_startswith_first
-        print(request)
+        # print(request)
         if len(request) > 0:
             msg, client_name = request.pop()
             # print(client_name)
             connection = []
+            # print("Ripristino")
 
             for i in range(len(self.link)):
                 if self.link[i] != client_name:
