@@ -1,4 +1,5 @@
 import random
+import time
 
 import numpy
 
@@ -46,6 +47,8 @@ class Router(Program):
         self.theta = params.theta
         self.senders = senders
         self.receivers = receivers
+        self.start_time = 0
+        self.end_time = 0
 
     @property
     def meta(self) -> ProgramMeta:
@@ -67,6 +70,7 @@ class Router(Program):
         yield from self.receive_message(context)
 
     def send_message(self, msg, context):
+        self.start_time = time.time()
         if self.receiver in self.link:
             csocket1 = context.csockets[self.receiver]
             csocket1.send("direct connection")
@@ -144,9 +148,9 @@ class Router(Program):
                     else:
                         self.sender = client_name
                         self.sender2 = client_name
-                        print(f"{counter}")
+                        # print(f"{counter}")
                         with open('test.txt', 'a') as f:
-                            f.write(f"{self.jointly} Link with {counter} hope\n")
+                            f.write(f"{self.jointly} Link with {counter} hope with {self.receiver}\n")
                         yield from self.create_quantum_link_initial(queue_protocol, context, request)
 
             # elif self.msg == "No Available":
@@ -176,7 +180,7 @@ class Router(Program):
             elif self.msg == "would like to communicate with":
                 self.sender = client_name
                 with open('test.txt', 'a') as f:
-                    f.write(f"{self.jointly} Link with 1 hope\n")
+                    f.write(f"{self.jointly} Link with 1 hope with {self.receiver}\n")
                 yield from self.create_quantum_link_direct_sender(context, request)
 
     def ask_availability(self, context, connection):
@@ -224,6 +228,11 @@ class Router(Program):
         yield from connection.flush()
         mo = int(mo)
         print(self.jointly + " I measured: " + mo.__str__())
+        self.end_time = time.time()
+        elapsed_time = self.end_time - self.start_time
+        with open('time.txt', 'a') as f:
+            f.write(f"{self.jointly} connected with a delay of {elapsed_time} with {self.receiver}\n")
+
         self.restore_values()
         yield from self.message_checker(context, request, queue_protocol)
 
@@ -315,6 +324,10 @@ class Router(Program):
         queue_protocol = QueueProtocol()
         queue_protocol.start()
         self.restore_values()
+        self.end_time = time.time()
+        elapsed_time = self.end_time - self.start_time
+        with open('time.txt', 'a') as f:
+            f.write(f"{self.jointly} connected with a delay of {elapsed_time} with {self.receiver}\n")
         yield from self.message_checker(context, request, queue_protocol)
 
     def create_quantum_link_direct_received(self, queue_protocol, context, request):
