@@ -119,7 +119,7 @@ def main():
     )
 
     #print(programs)
-    for i in range(100):
+    for i in range(10):
 
         senders = random.sample(node_names, number_comunication)
         received = random.sample(node_names, number_comunication)

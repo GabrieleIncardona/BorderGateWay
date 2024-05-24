@@ -111,7 +111,7 @@ class Router(Program):
                         self.availability = 0
                         self.last = 1
                         self.sender = client_name
-                        self.send_answer(context)
+                        self.send_answer(context, 0)
                         string = msg.split(" ")
                         self.first = string[0]
                         if self.link_already_created == 0:
@@ -132,17 +132,21 @@ class Router(Program):
                     else:
                         request.append((msg, client_name))
 
-            elif self.msg == "Available":
+            elif "Available" in self.msg:
                 if self.link_already_created == 0:
                     self.link_already_created = 1
                     self.sender2 = client_name
-
+                    substring = msg.split(":")
+                    counter = int(substring[1].strip())
+                    counter = counter + 1
                     if self.initiator == 0:
-                        self.send_answer(context)
+                        self.send_answer(context, counter)
                     else:
                         self.sender = client_name
                         self.sender2 = client_name
-                        # self.cycle = False
+                        print(f"{counter}")
+                        with open('test.txt', 'a') as f:
+                            f.write(f"{self.jointly} Link with 1 hope\n")
                         yield from self.create_quantum_link_initial(queue_protocol, context, request)
 
             # elif self.msg == "No Available":
@@ -171,18 +175,18 @@ class Router(Program):
 
             elif self.msg == "would like to communicate with":
                 self.sender = client_name
+                with open('test.txt', 'a') as f:
+                    f.write(f"{self.jointly} Link with {counter} hope\n")
                 yield from self.create_quantum_link_direct_sender(context, request)
-
-
 
     def ask_availability(self, context, connection):
         for i in range(len(connection)):
             csocket = context.csockets[connection[i]]
             csocket.send(self.msg)
 
-    def send_answer(self, context):
+    def send_answer(self, context, counter):
         csocket = context.csockets[self.sender]
-        csocket.send("Available")
+        csocket.send(f"Available, counter: {counter}")
 
     def Notsend_answer(self, context, client_name):
         csocket = context.csockets[client_name]
@@ -360,7 +364,7 @@ class Router(Program):
                     self.availability = 0
                     self.last = 1
                     self.sender = client_name
-                    self.send_answer(context)
+                    self.send_answer(context, 0)
                     string = msg.split(" ")
                     self.first = string[0]
                     if self.link_already_created == 0:
