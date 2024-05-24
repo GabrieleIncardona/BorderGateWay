@@ -1,5 +1,6 @@
 import random
 import time
+from asyncio import sleep
 
 import numpy
 
@@ -131,18 +132,22 @@ class Router(Program):
                     if self.availability == 1:
                         self.availability = 0
                         self.sender = client_name
+                        string = msg.split(" ")
+                        self.first = string[0]
                         self.ask_availability(context, connection)
 
                     else:
                         request.append((msg, client_name))
 
-            elif "Available" in self.msg:
+            elif "Available" in msg:
                 if self.link_already_created == 0:
                     self.link_already_created = 1
                     self.sender2 = client_name
                     substring = msg.split(":")
+                    # print(substring)
                     counter = int(substring[1].strip())
                     counter = counter + 1
+                    # print(f"{self.jointly}: {self.initiator}")
                     if self.initiator == 0:
                         self.send_answer(context, counter)
                     else:
@@ -157,31 +162,33 @@ class Router(Program):
             #    if self.availability == 0 and self.initiator == 0:
             #        self.Restore_availability(context)
 
-            elif self.msg.startswith("Sending epr"):
+            elif msg.startswith("Sending epr"):
                 self.sender = client_name
                 # self.cycle = False
                 if self.last == 0:
                     yield from self.create_quantum_link_intermediate(queue_protocol, context, request)
                 else:
                     yield from self.create_quantum_link_last(queue_protocol, context, request)
-            elif self.msg == "Restore availability":
+            elif msg == "Restore availability":
                 if self.availability == 0 and self.initiator == 0:
                     self.Restore_availability(context, client_name)
                     self.availability = 1
                     # print(f"{self.jointly}")
                 elif self.initiator == 1:
+                    sleep(10)
                     self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
 
-            elif self.msg == "direct connection":
+            elif msg == "direct connection":
                 self.sender = client_name
                 self.availability = 0
                 yield from self.create_quantum_link_direct_received(queue_protocol, context, request)
 
-            elif self.msg == "would like to communicate with":
+            elif msg == "would like to communicate with":
                 self.sender = client_name
                 with open('test.txt', 'a') as f:
                     f.write(f"{self.jointly} Link with 1 hope with {self.receiver}\n")
                 yield from self.create_quantum_link_direct_sender(context, request)
+            self.msg = ""
 
     def ask_availability(self, context, connection):
         for i in range(len(connection)):
@@ -216,7 +223,11 @@ class Router(Program):
         # sending buffer signal
         csocket.send("I'm the first")
         measurements_obtained = []
-        client_name, msg = yield from queue_protocol.pop()
+        while True:
+            client_name, msg = yield from queue_protocol.pop()
+            if "want to communicate with" not in msg:
+                break
+            request.append((msg, client_name))
         elements = msg[1:-1].split(', ')
         for i in elements:
             measurements_obtained.append(i)
@@ -251,26 +262,68 @@ class Router(Program):
         csocket2.send("Sending epr")
         epr1 = epr_socket2.create_keep()[0]
         yield from connection.flush()
-        client_name, msg = yield from queue_protocol.pop()
 
-        if msg != "I'm the first":
-            elements = msg[1:-1].split(', ')
-            for i in elements:
-                intermediate_measurements.append(int(i))
         epr0.cnot(epr1)
         epr0.H()
         m0 = epr0.measure()
         m1 = epr1.measure()
         yield from connection.flush()
-        intermediate_measurements.append(int(m1))
-        csocket2.send(intermediate_measurements.__str__())
-        client_name, msg = yield from queue_protocol.pop()
-        if msg != "I'm last":
-            elements = msg[1:-1].split(', ')
-            for i in elements:
-                measurements.append(int(i))
-        measurements.append(int(m0))
-        csocket1.send(measurements.__str__())
+
+        # client_name, msg = yield from queue_protocol.pop()
+        while True:
+            client_name, msg = yield from queue_protocol.pop()
+            if "want to communicate with" not in msg:
+                break
+            request.append((msg, client_name))
+        if msg == "I'm the first":
+            intermediate_measurements.append(int(m1))
+            csocket2.send(intermediate_measurements.__str__())
+        elif msg == "I'm last":
+            measurements.append(int(m0))
+            csocket1.send(measurements.__str__())
+
+        # print(f"{self.jointly}: {msg}")
+        else:
+            if client_name == self.sender:
+                elements = msg[1:-1].split(', ')
+                for i in elements:
+                    intermediate_measurements.append(int(i))
+                intermediate_measurements.append(int(m1))
+                csocket2.send(intermediate_measurements.__str__())
+            else:
+                elements = msg[1:-1].split(', ')
+                for i in elements:
+                    measurements.append(int(i))
+            measurements.append(int(m0))
+            csocket1.send(measurements.__str__())
+
+        while True:
+            client_name, msg = yield from queue_protocol.pop()
+            if "want to communicate with" not in msg:
+                break
+            request.append((msg, client_name))
+        if msg == "I'm the first":
+            intermediate_measurements.append(int(m1))
+            csocket2.send(intermediate_measurements.__str__())
+        elif msg == "I'm last":
+            measurements.append(int(m0))
+            csocket1.send(measurements.__str__())
+
+        # print(f"{self.jointly}: {msg}")
+        else:
+            if client_name == self.sender:
+                elements = msg[1:-1].split(', ')
+                for i in elements:
+                    intermediate_measurements.append(int(i))
+                intermediate_measurements.append(int(m1))
+                csocket2.send(intermediate_measurements.__str__())
+            else:
+                elements = msg[1:-1].split(', ')
+                for i in elements:
+                    measurements.append(int(i))
+            measurements.append(int(m0))
+            csocket1.send(measurements.__str__())
+
         self.restore_values()
         yield from self.message_checker(context, request, queue_protocol)
 
@@ -285,7 +338,11 @@ class Router(Program):
         yield from connection.flush()
         csocket.send("I'm last")
         intermediate_measurements = []
-        client_name, msg = yield from queue_protocol.pop()
+        while True:
+            client_name, msg = yield from queue_protocol.pop()
+            if "want to communicate with" not in msg:
+                break
+            request.append((msg, client_name))
         elements = msg[1:-1].split(', ')
         for i in elements:
             intermediate_measurements.append(i)
@@ -345,7 +402,6 @@ class Router(Program):
             if msg.isdigit():
                 break
             csocket1 = context.csockets[client_name]
-            csocket1.send("No Available")
         m1 = int(msg)
         if int(m1) == 1:
             epr.Z()
@@ -358,8 +414,9 @@ class Router(Program):
 
     def message_checker(self, context, request, queue_protocol):
         request_non_startswith_first = [item for item in request if not item[0].startswith(self.first)]
+        # print(f"{self.jointly}: {self.first}")
         request = request_non_startswith_first
-        # print(request)
+        print(request)
         if len(request) > 0:
             msg, client_name = request.pop()
             # print(client_name)
@@ -369,8 +426,6 @@ class Router(Program):
                 if self.link[i] != client_name:
                     connection.append(self.link[i])
             self.msg = msg
-            # print(msg)
-            # print(f"{self.jointly}: {client_name}")
             if "want to communicate with" in msg:
                 submission = self.msg.split("want to communicate with ")
                 if self.jointly == submission[1]:
@@ -383,10 +438,11 @@ class Router(Program):
                     if self.link_already_created == 0:
                         self.link_already_created = 1
                 else:
-                    if self.availability == 1:
-                        self.availability = 0
-                        self.sender = client_name
-                        self.ask_availability(context, connection)
+                    self.availability = 0
+                    self.sender = client_name
+                    string = msg.split(" ")
+                    self.first = string[0]
+                    self.ask_availability(context, connection)
 
             elif msg == "direct connection":
                 self.sender = client_name
@@ -397,7 +453,7 @@ class Router(Program):
     def restore_values(self):
         self.msg = ""
         self.availability = 1
-        self.sender = None
+        # self.sender = None
         self.sender2 = None
         self.initiator = 0
         self.last = 0
