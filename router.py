@@ -92,6 +92,7 @@ class Router(Program):
     def receive_message(self, context):
         queue_protocol = QueueProtocol()
         queue_protocol.start()
+        count = 0
 
         request = []
 
@@ -99,7 +100,7 @@ class Router(Program):
             listener = (
                 CSocketListener(context, self.link[i], queue_protocol, self.logger))
             listener.start()
-        while True:
+        while True and count < 1000:
             connection = []
             client_name, msg = yield from queue_protocol.pop()
 
@@ -176,11 +177,12 @@ class Router(Program):
                 if self.availability == 0 and self.initiator == 0 and self.first in msg:
                     self.send_message(f"Restore availability {self.first}", context)
                     self.availability = 1
+                    # print("HELLO")
                     self.message_checker(context, request, queue_protocol)
                     # print(f"{self.jointly}")
                 elif self.initiator == 1 and self.link_already_created == 0:
                     time.sleep(0.001)
-                    print(f"{self.jointly}  want to communicate with {self.receiver}")
+                    # print(f"{self.jointly}  want to communicate with {self.receiver}")
                     self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
 
             elif msg == "direct connection":
@@ -201,7 +203,7 @@ class Router(Program):
                 yield from self.create_quantum_link_direct_sender(context, request, queue_protocol)
 
             self.msg = ""
-
+            count = count + 1
     def ask_availability(self, context, connection):
         for i in range(len(connection)):
             csocket = context.csockets[connection[i]]
@@ -356,7 +358,7 @@ class Router(Program):
         csocket.send("I'm last")
         intermediate_measurements = []
         while True:
-            client_name, msg= yield from queue_protocol.pop()
+            client_name, msg = yield from queue_protocol.pop()
             if "want to communicate with" not in msg and "Restore availability" not in msg and "Available" not in msg:
                 break
             request.append((msg, client_name))
@@ -431,10 +433,12 @@ class Router(Program):
         self.message_checker(context, request, queue_protocol)
 
     def message_checker(self, context, request, queue_protocol):
+        # print(f"{self.first}")
         request_non_startswith_first = [item for item in request if not item[0].startswith(self.first)]
         request_non_startswith_first = [item for item in request_non_startswith_first if not item[0].startswith("Restore availability") and "Available" not in item[0]]
         # print(f"{self.jointly}: {self.first}")
         request = request_non_startswith_first
+        self.first = ""
         # print(request)
         if len(request) > 0:
 
@@ -454,7 +458,7 @@ class Router(Program):
 
                 if self.jointly == submission[1]:
                     if self.availability == 1:
-                        #print("start")
+                        # print("start")
                         self.availability = 0
                         self.last = 1
                         self.sender = client_name
