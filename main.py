@@ -138,6 +138,10 @@ def main():
             router = Router(node_name, link, TeleportParams.generate_random_params(), senders, received)
             programs[node_name] = router
         run(config=cfg, programs=programs, num_times=1)
+        with open('time.txt', 'a') as f:
+            f.write(f"\n")
+        with open('test.txt', 'a') as f:
+            f.write(f"\n")
         print('\n')
 
 

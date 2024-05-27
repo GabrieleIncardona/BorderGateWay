@@ -400,10 +400,12 @@ class Router(Program):
         self.restore_values()
         self.end_time = time.time()
         elapsed_time = self.end_time - self.start_time
-        self.receiver = ""
-        self.availability = 1
+
+
         with open('time.txt', 'a') as f:
             f.write(f"{self.jointly} connected with a delay of {elapsed_time} with {self.receiver}\n")
+        self.receiver = ""
+        self.restore_values()
         self.message_checker(context, request, queue_protocol)
 
     def create_quantum_link_direct_received(self, queue_protocol, context, request):
