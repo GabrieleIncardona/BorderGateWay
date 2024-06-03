@@ -159,7 +159,7 @@ class Router(Program):
                         self.sender2 = client_name
                         # print(f"{counter}")
                         with open('test.txt', 'a') as f:
-                            f.write(f"{self.jointly} Link with {counter} hope with {self.receiver}\n")
+                            f.write(f"{self.jointly} Link with {counter} hop with {self.receiver}\n")
                         yield from self.create_quantum_link_initial(queue_protocol, context, request)
 
             # elif self.msg == "No Available":
@@ -199,11 +199,12 @@ class Router(Program):
                 self.sender = client_name
                 self.link_already_created = 1
                 with open('test.txt', 'a') as f:
-                    f.write(f"{self.jointly} Link with 1 hope with {self.receiver}\n")
+                    f.write(f"{self.jointly} Link with 1 hop with {self.receiver}\n")
                 yield from self.create_quantum_link_direct_sender(context, request, queue_protocol)
 
             self.msg = ""
             count = count + 1
+
     def ask_availability(self, context, connection):
         for i in range(len(connection)):
             csocket = context.csockets[connection[i]]
@@ -341,7 +342,6 @@ class Router(Program):
             measurements.append(int(m0))
             csocket1.send(measurements.__str__())
 
-
         self.send_message(f"Restore availability {self.first}", context)
         self.restore_values()
         self.message_checker(context, request, queue_protocol)
@@ -397,10 +397,8 @@ class Router(Program):
         csocket.send(m1)
 
         print(self.jointly + " I measured: " + m1.__str__())
-        self.restore_values()
         self.end_time = time.time()
         elapsed_time = self.end_time - self.start_time
-
 
         with open('time.txt', 'a') as f:
             f.write(f"{self.jointly} connected with a delay of {elapsed_time} with {self.receiver}\n")
@@ -494,4 +492,3 @@ class Router(Program):
         self.initiator = 0
         self.last = 0
         self.link_already_created = 0
-
