@@ -27,7 +27,7 @@ class TeleportParams:
         return params
 
 
-class Router(Program):
+class QuantumRepeater(Program):
     msg = ""
     availability = 1
     sender = None
@@ -100,7 +100,7 @@ class Router(Program):
             listener = (
                 CSocketListener(context, self.link[i], queue_protocol, self.logger))
             listener.start()
-        while True and count < 1000:
+        while True and count < 1000000000:
             connection = []
             client_name, msg = yield from queue_protocol.pop()
 

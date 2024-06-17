@@ -7,7 +7,7 @@ from netsquid_netbuilder.util.network_generation import create_complete_graph_ne
 
 from squidasm.run.stack.run import run
 
-from router import *
+from quantum_repeater import *
 from squidasm.run.stack.run import run
 
 
