@@ -1,4 +1,5 @@
 import random
+import threading
 import time
 
 import numpy
@@ -39,7 +40,7 @@ class QuantumRepeater(Program):
     receiver = ""
     first = ""
 
-    def __init__(self, jointly, link, params: TeleportParams, senders, receivers):
+    def __init__(self, jointly, link, params: TeleportParams, senders, receivers, N):
         self.logger = LogManager.get_stack_logger(self.__class__.__name__)
         self.jointly = jointly
         self.link = link
@@ -49,6 +50,7 @@ class QuantumRepeater(Program):
         self.receivers = receivers
         self.start_time = 0
         self.end_time = 0
+        self.N = N
 
     @property
     def meta(self) -> ProgramMeta:
@@ -62,12 +64,13 @@ class QuantumRepeater(Program):
     def run(self, context: ProgramContext):
 
         if self.jointly in self.senders:
-            self.receiver = random.choice(self.receivers)
-            if self.jointly != self.receiver:
-                self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
-                print(f"{self.jointly} would like to communicate with {self.receiver}")
+            receiver = random.choice(self.receivers)
+            if self.jointly != receiver:
+                print(f"{self.jointly} would like to communicate with {receiver}")
+                self.start_communication(context, receiver)
 
         yield from self.receive_message(context)
+        self.availability = 1
 
     def send_message(self, msg, context):
         self.start_time = time.time()
@@ -100,7 +103,7 @@ class QuantumRepeater(Program):
             listener = (
                 CSocketListener(context, self.link[i], queue_protocol, self.logger))
             listener.start()
-        while True and count < 1000000000:
+        while True and count < 10000:
             connection = []
             client_name, msg = yield from queue_protocol.pop()
 
@@ -174,7 +177,7 @@ class QuantumRepeater(Program):
                 else:
                     yield from self.create_quantum_link_last(queue_protocol, context, request)
             elif "Restore availability" in msg:
-                if self.availability == 0 and self.initiator == 0 and self.first in msg:
+                if self.availability == 0 and self.first in msg:
                     self.send_message(f"Restore availability {self.first}", context)
                     self.availability = 1
                     # print("HELLO")
@@ -492,3 +495,16 @@ class QuantumRepeater(Program):
         self.initiator = 0
         self.last = 0
         self.link_already_created = 0
+
+    def start_communication(self, context, receiver):
+        self.receiver = receiver
+        timeout = random.random() * 2
+        timer = threading.Timer(timeout, lambda: self.check_and_send_message(context, receiver))
+        timer.start()
+
+    def check_and_send_message(self, context, receiver):
+        if self.availability == 1:
+            self.receiver = receiver
+            self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
+        else:
+            self.start_communication(context, receiver)

@@ -1,5 +1,6 @@
 import traceback
 import random
+from time import sleep
 
 from netsquid_magic.models.perfect import PerfectLinkConfig
 from netsquid_netbuilder.modules.clinks.default import DefaultCLinkConfig
@@ -135,9 +136,10 @@ def main():
                         if num != node_name:
                             link.append(num)
 
-            router = Router(node_name, link, TeleportParams.generate_random_params(), senders, received)
+            router = QuantumRepeater(node_name, link, TeleportParams.generate_random_params(), senders, received, N)
             programs[node_name] = router
         run(config=cfg, programs=programs, num_times=1)
+        sleep(5)
         with open('time.txt', 'a') as f:
             f.write(f"\n")
         with open('test.txt', 'a') as f:
