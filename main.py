@@ -136,7 +136,7 @@ def main():
                         if num != node_name:
                             link.append(num)
 
-            router = QuantumRepeater(node_name, link, TeleportParams.generate_random_params(), senders, received, N)
+            router = QuantumRepeater(node_name, link, TeleportParams.generate_random_params(), senders, received, number_comunication)
             programs[node_name] = router
         run(config=cfg, programs=programs, num_times=1)
         sleep(5)

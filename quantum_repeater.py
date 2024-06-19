@@ -66,15 +66,19 @@ class QuantumRepeater(Program):
         if self.jointly in self.senders:
             receiver = random.choice(self.receivers)
             if self.jointly != receiver:
+                timer = random.random() * (self.N - 1) * 2 / self.N + (self.N - 1) * 0.1
+                time.sleep(timer)
+                self.send_message(f"{self.jointly} want to communicate with {receiver}", context, receiver)
                 print(f"{self.jointly} would like to communicate with {receiver}")
-                self.start_communication(context, receiver)
 
         yield from self.receive_message(context)
         self.availability = 1
 
-    def send_message(self, msg, context):
+    def send_message(self, msg, context, receiver):
+
         self.start_time = time.time()
-        if self.receiver in self.link:
+        self.receiver = receiver
+        if receiver in self.link:
             csocket1 = context.csockets[self.receiver]
             csocket1.send("direct connection")
             self.initiator = 1
@@ -103,7 +107,7 @@ class QuantumRepeater(Program):
             listener = (
                 CSocketListener(context, self.link[i], queue_protocol, self.logger))
             listener.start()
-        while True and count < 10000:
+        while True and count < 100:
             connection = []
             client_name, msg = yield from queue_protocol.pop()
 
@@ -177,8 +181,8 @@ class QuantumRepeater(Program):
                 else:
                     yield from self.create_quantum_link_last(queue_protocol, context, request)
             elif "Restore availability" in msg:
-                if self.availability == 0 and self.first in msg:
-                    self.send_message(f"Restore availability {self.first}", context)
+                if self.availability == 0 and self.first in msg and self.initiator == 0:
+                    self.send_message(f"Restore availability {self.first}", context, "")
                     self.availability = 1
                     # print("HELLO")
                     self.message_checker(context, request, queue_protocol)
@@ -186,7 +190,7 @@ class QuantumRepeater(Program):
                 elif self.initiator == 1 and self.link_already_created == 0:
                     time.sleep(0.001)
                     # print(f"{self.jointly}  want to communicate with {self.receiver}")
-                    self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
+                    self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context, "")
 
             elif msg == "direct connection":
                 if self.availability == 1:
@@ -262,7 +266,7 @@ class QuantumRepeater(Program):
         with open('time.txt', 'a') as f:
             f.write(f"{self.jointly} connected with a delay of {elapsed_time} with {self.receiver}\n")
         self.receiver = " "
-        self.send_message(f"Restore availability {self.jointly}", context)
+        self.send_message(f"Restore availability {self.jointly}", context, "")
         self.restore_values()
         self.message_checker(context, request, queue_protocol)
 
@@ -345,7 +349,7 @@ class QuantumRepeater(Program):
             measurements.append(int(m0))
             csocket1.send(measurements.__str__())
 
-        self.send_message(f"Restore availability {self.first}", context)
+        self.send_message(f"Restore availability {self.first}", context, "")
         self.restore_values()
         self.message_checker(context, request, queue_protocol)
 
@@ -376,7 +380,7 @@ class QuantumRepeater(Program):
         yield from connection.flush()
         mo = int(mo)
         print(self.jointly + " I measured: " + mo.__str__())
-        self.send_message(f"Restore availability {self.first}", context)
+        self.send_message(f"Restore availability {self.first}", context, "")
         self.restore_values()
         self.message_checker(context, request, queue_protocol)
 
@@ -441,7 +445,7 @@ class QuantumRepeater(Program):
         request_non_startswith_first = [item for item in request_non_startswith_first if not item[0].startswith("Restore availability") and "Available" not in item[0]]
         # print(f"{self.jointly}: {self.first}")
         request = request_non_startswith_first
-        self.first = ""
+
         # print(request)
         if len(request) > 0:
 
@@ -495,16 +499,3 @@ class QuantumRepeater(Program):
         self.initiator = 0
         self.last = 0
         self.link_already_created = 0
-
-    def start_communication(self, context, receiver):
-        self.receiver = receiver
-        timeout = random.random() * 2
-        timer = threading.Timer(timeout, lambda: self.check_and_send_message(context, receiver))
-        timer.start()
-
-    def check_and_send_message(self, context, receiver):
-        if self.availability == 1:
-            self.receiver = receiver
-            self.send_message(f"{self.jointly} want to communicate with {self.receiver}", context)
-        else:
-            self.start_communication(context, receiver)
