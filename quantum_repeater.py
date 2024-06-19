@@ -65,9 +65,9 @@ class QuantumRepeater(Program):
         if self.jointly in self.senders:
             receiver = random.choice(self.receivers)
             if self.jointly != receiver:
-                timer = random.random() * (self.N - 1) * 20 / self.N + (self.N - 1) * 0.1
+                timer = random.random() * (self.N - 1) * 2 / self.N + (self.N - 1) * 0.1
                 sleep_protocol = SleepingProtocol()
-                print(f"{timer}")
+                # print(f"{self.jointly}: {timer}")
                 yield from sleep_protocol.sleep(duration=(timer * (10 ** 9)))
                 self.send_message(f"{self.jointly} want to communicate with {receiver}", context, receiver)
                 print(f"{self.jointly} would like to communicate with {receiver}")
@@ -78,6 +78,7 @@ class QuantumRepeater(Program):
     def send_message(self, msg, context, receiver):
 
         self.start_time = time.time()
+
         self.receiver = receiver
         if receiver in self.link:
             csocket1 = context.csockets[self.receiver]
@@ -89,8 +90,11 @@ class QuantumRepeater(Program):
             csocket = []
             for i in range(len(self.link)):
                 csocket.append(context.csockets[self.link[i]])
-            if "want to communicate with" in msg:
+            if "want to communicate with" in msg and receiver != "":
                 self.initiator = 1
+                print(f"{self.jointly} want to communicate with {self.receiver}")
+            elif "want to communicate with" in msg and receiver == "":
+                msg = "Bad Request"
             self.msg = msg
             self.availability = 0
             # yield from connection.flush()
@@ -108,7 +112,7 @@ class QuantumRepeater(Program):
             listener = (
                 CSocketListener(context, self.link[i], queue_protocol, self.logger))
             listener.start()
-        while True and count < 1000:
+        while True and count < 10000:
             connection = []
             client_name, msg = yield from queue_protocol.pop()
 
@@ -209,6 +213,8 @@ class QuantumRepeater(Program):
                 with open('test.txt', 'a') as f:
                     f.write(f"{self.jointly} Link with 1 hop with {self.receiver}\n")
                 yield from self.create_quantum_link_direct_sender(context, request, queue_protocol)
+            else:
+                self.msg = ""
 
             self.msg = ""
             count = count + 1
