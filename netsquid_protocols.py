@@ -11,7 +11,7 @@ But in SquidASM one can not create a functional application in the same fashion
 In this file, Netsquid Protocols have been created, but as these do not translate to hardware,
  any application written using them will require a larger translation to be compatible with hardware.
 """
-
+import random
 from logging import Logger
 from typing import Generator, Tuple
 
@@ -93,3 +93,10 @@ class CSocketListener(Protocol):
             message = yield from csocket.recv()
             self._queue_protocol.push(self._peer_name, str(message))
             self.logger.info(f"Received message: {message}")
+
+
+class WaitProtocol(Protocol):
+    def __init__(self, timer):
+        self._timer = timer
+    def run(self):
+        yield self.await_timer(self._timer)
