@@ -3,7 +3,7 @@ import time
 
 import numpy
 
-from netsquid_protocols import QueueProtocol, CSocketListener,  WaitProtocol
+from netsquid_protocols import QueueProtocol, CSocketListener,  SleepingProtocol
 
 from netqasm.sdk import Qubit
 from netqasm.sdk.classical_communication.message import StructuredMessage
@@ -66,7 +66,9 @@ class QuantumRepeater(Program):
             receiver = random.choice(self.receivers)
             if self.jointly != receiver:
                 timer = random.random() * (self.N - 1) * 20 / self.N + (self.N - 1) * 0.1
-                wait_protocol = WaitProtocol(timer)
+                sleep_protocol = SleepingProtocol()
+                print(f"{timer}")
+                yield from sleep_protocol.sleep(duration=(timer * (10 ** 9)))
                 self.send_message(f"{self.jointly} want to communicate with {receiver}", context, receiver)
                 print(f"{self.jointly} would like to communicate with {receiver}")
 
